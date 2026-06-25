@@ -27,7 +27,7 @@ export const appNavigationItems: AppNavigationItem[] = [
   { label: "Dashboard", href: "/app", icon: LayoutDashboard },
   { label: "Events", href: "/app/events", icon: CalendarDays },
   { label: "Media Library", href: "/app/media-library", icon: Images },
-  { label: "Upload Center", href: "/app/upload-center", icon: CloudUpload },
+  { label: "Upload Center", href: "/app/upload", icon: CloudUpload },
   { label: "Creators", href: "/app/creators", icon: Camera },
   { label: "Assignments", href: "/app/assignments", icon: ClipboardList },
   { label: "Athletes", href: "/app/athletes", icon: Users },

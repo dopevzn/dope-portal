@@ -16,17 +16,20 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Current Milestone
+## Current Foundation
 
-Milestone 2 adds Clerk authentication and the protected RecruitLook app shell:
+The app now includes the RecruitLook production portal foundation:
 
-- Clerk provider and route middleware
-- Public sign-in and sign-up routes
-- Protected `/app` route group
+- Clerk provider, public auth routes, and protected `/app` route group
 - RecruitLook command-center shell with sidebar, top bar, and user menu
-- Mock dashboard metrics for the first authenticated workspace
+- Protected module pages for events, media, uploads, creators, assignments,
+  athletes, schools, sponsors, deliverables, requests, analytics, and settings
+- Shared app UI primitives for stats, filters, tables, status badges, empty
+  states, module cards, section headers, and page shells
+- Supabase-ready schema, RLS, and RecruitLook seed data under `supabase/`
+- Typed Supabase browser, server, and admin client factories under `lib/supabase/`
 
-Supabase, R2, Stripe, Resend, and OpenAI are intentionally not connected yet.
+Cloudflare R2, Stripe, Resend, and OpenAI are intentionally not integrated yet.
 
 ## Clerk Setup
 
@@ -49,6 +52,30 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/app
 ```
 
 Do not commit `.env.local`.
+
+## Supabase Setup
+
+The local app expects these Supabase variables in `.env.local`:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+The service-role key is server-only. Do not read it in Client Components and do
+not commit it.
+
+Apply the database files in this order:
+
+1. `supabase/schema.sql`
+2. `supabase/rls.sql`
+3. `supabase/seed.sql`
+
+See `supabase/README.md` for the tenant model, RLS approach, and seed contents.
+The protected UI currently reads from centralized RecruitLook data utilities so
+the pages are usable before importing live records. The next data step is to
+replace those utility reads with tenant-scoped Supabase queries.
 
 ## Protected Routes
 
@@ -84,8 +111,11 @@ npm run build
 - `app/app/` - protected internal app routes
 - `components/ui/` - shadcn-style primitives owned by the app
 - `components/landing/` - public landing page sections
-- `components/app/` - protected app shell and RecruitLook dashboard preview
-- `lib/` - reusable utilities and seeded UI data
+- `components/app/` - protected app shell, shared app UI, dashboard, and module renderer
+- `lib/supabase/` - typed Supabase client factories
+- `lib/` - reusable utilities and centralized RecruitLook operating data
+- `supabase/` - schema, RLS policies, seed data, and database setup docs
+- `types/database.ts` - Supabase database types used by client factories
 
 ## Product Direction
 

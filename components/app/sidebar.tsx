@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { BrandMark } from "@/components/brand-mark";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +9,7 @@ import { appNavigationItems, tenantSwitcher } from "@/lib/app-navigation";
 import { cn } from "@/lib/utils";
 
 export function AppSidebar() {
+  const pathname = usePathname();
   const TenantIcon = tenantSwitcher.icon;
   const TrustIcon = tenantSwitcher.trustIcon;
 
@@ -40,7 +44,10 @@ export function AppSidebar() {
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3" aria-label="App navigation">
         {appNavigationItems.map((item) => {
           const Icon = item.icon;
-          const isActive = item.href === "/app";
+          const isActive =
+            item.href === "/app"
+              ? pathname === "/app"
+              : pathname.startsWith(item.href);
 
           return (
             <Link
