@@ -44,19 +44,19 @@ export function LandingPage() {
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
-                  href="/sign-up"
+                  href="/sign-in"
                   prefetch={false}
                   className={buttonVariants({ size: "lg" })}
                 >
-                  Request access
+                  Sign In
                   <ArrowRight data-icon="inline-end" />
                 </Link>
                 <Link
-                  href="/app"
+                  href="/sign-up"
                   prefetch={false}
                   className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
                 >
-                  View RecruitLook portal
+                  Request Access
                 </Link>
               </div>
               <div className="mt-10 grid gap-3 sm:grid-cols-3">

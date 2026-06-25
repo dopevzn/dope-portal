@@ -29,14 +29,14 @@ export function SiteHeader() {
           prefetch={false}
           className="hidden rounded-[8px] px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-foreground sm:inline-flex"
         >
-          Sign in
+          Sign In
         </Link>
         <Link
           href="/sign-up"
           prefetch={false}
           className={cn(buttonVariants({ size: "sm" }), "hidden sm:inline-flex")}
         >
-          Request access
+          Request Access
           <ArrowRight data-icon="inline-end" />
         </Link>
       </div>
