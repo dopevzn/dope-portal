@@ -20,6 +20,12 @@ import {
   type SearchParamsRecord,
   type StatSnapshot,
 } from "@/lib/app-modules";
+import type {
+  MediaLibraryItem,
+  MediaLibraryPageData,
+  UploadCenterData,
+  UploadOption,
+} from "@/lib/media-types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/types/database";
 
@@ -40,7 +46,7 @@ type StorageUsageRow = Tables["storage_usage"]["Row"];
 
 type SupabaseAdminClient = ReturnType<typeof createAdminClient>;
 
-type PortalContext = {
+export type PortalContext = {
   organization: OrganizationRow;
   supabase: SupabaseAdminClient;
   userId: string;
@@ -104,6 +110,10 @@ async function getPortalContext(): Promise<PortalContext> {
     supabase,
     userId,
   };
+}
+
+export async function getRecruitLookPortalContext() {
+  return getPortalContext();
 }
 
 async function contextOrDefault(context?: PortalContext) {
@@ -458,7 +468,7 @@ function moduleCards(records: RecruitLookRecords, moduleId: ModuleId): ModuleCar
       { label: "Tagged for sponsors", value: `${records.mediaFiles.filter((file) => file.sponsor_id).length}`, detail: "Linked to sponsor obligations", tone: "primary" },
     ],
     upload: [
-      { label: "Media volume", value: storage ? tbToDisplay(storage.used_bytes) : bytesToDisplay(records.mediaFiles.reduce((sum, file) => sum + file.size_bytes, 0)), detail: "Total tracked upload footprint", tone: "neutral" },
+      { label: "Media volume", value: storage ? tbToDisplay(storage.used_bytes) : bytesToDisplay(records.mediaFiles.reduce((sum, file) => sum + (file.file_size_bytes ?? file.size_bytes), 0)), detail: "Total tracked upload footprint", tone: "neutral" },
       { label: "Routing SLA", value: "92%", detail: "Files routed within 12 hours", tone: "success" },
     ],
     creators: [
@@ -563,11 +573,45 @@ function buildMediaRows(records: RecruitLookRecords) {
         status,
         visibility,
         uploadedAt: formatShortDateTime(file.uploaded_at),
-        size: bytesToDisplay(file.size_bytes),
+        size: bytesToDisplay(file.file_size_bytes ?? file.size_bytes),
       },
       { status, type, visibility },
     );
   });
+}
+
+function uploadOption(id: string, label: string, detail?: string): UploadOption {
+  return { id, label, detail };
+}
+
+function buildMediaLibraryItems(
+  records: RecruitLookRecords,
+  rows: ReturnType<typeof buildMediaRows>,
+): MediaLibraryItem[] {
+  const { creatorById, eventById } = mapsFor(records);
+  const visibleIds = new Set(rows.map((item) => item.id));
+
+  return records.mediaFiles
+    .filter((file) => visibleIds.has(file.id))
+    .map((file) => {
+      const event = file.event_id ? eventById.get(file.event_id) : null;
+      const creator = file.creator_id ? creatorById.get(file.creator_id) : null;
+      const key = file.r2_key ?? file.storage_key;
+
+      return {
+        canDownload: file.storage_provider === "r2" && Boolean(key),
+        creatorName: creator?.display_name ?? "Unassigned",
+        downloadCount: file.download_count ?? 0,
+        eventName: event?.name ?? "Unassigned",
+        fileName: file.original_filename ?? file.file_name,
+        fileType: titleCase(file.file_type),
+        id: file.id,
+        sizeLabel: bytesToDisplay(file.file_size_bytes ?? file.size_bytes),
+        status: titleCase(file.processing_status),
+        uploadedAt: formatShortDateTime(file.uploaded_at),
+        visibility: titleCase(file.visibility),
+      };
+    });
 }
 
 function buildCreatorRows(records: RecruitLookRecords) {
@@ -749,7 +793,7 @@ function buildSettingsRows(records: RecruitLookRecords) {
     row("settings-timezone", { setting: "Workspace timezone", domain: "Organization", value: organization?.timezone ?? "America/Chicago", owner: "Admin", status: "Configured" }, { domain: "Organization", status: "Configured" }),
     row("settings-roles", { setting: "Role structure", domain: "Access", value: "owner, media_director, admin, creators, coach, sponsor, viewer", owner: "Owner", status: "Configured" }, { domain: "Access", status: "Configured" }),
     row("settings-supabase", { setting: "Supabase database", domain: "Storage", value: "Live reads connected", owner: "Engineering", status: "Ready" }, { domain: "Storage", status: "Ready" }),
-    row("settings-r2", { setting: "Cloudflare R2", domain: "Storage", value: "Planned integration", owner: "Engineering", status: "Needs Key" }, { domain: "Storage", status: "Needs Key" }),
+    row("settings-r2", { setting: "Cloudflare R2", domain: "Storage", value: "Presigned upload and download routes configured", owner: "Engineering", status: "Ready" }, { domain: "Storage", status: "Ready" }),
     row("settings-storage", { setting: "Storage snapshot", domain: "Storage", value: storage ? `${tbToDisplay(storage.used_bytes)} used` : "No snapshot", owner: "Engineering", status: "Ready" }, { domain: "Storage", status: "Ready" }),
     row("settings-audit", { setting: "Audit logging", domain: "Audit", value: "Schema ready", owner: "Engineering", status: "Ready" }, { domain: "Audit", status: "Ready" }),
   ];
@@ -790,6 +834,56 @@ export async function getOperationsModuleData(
   };
 }
 
+export async function getUploadCenterData(
+  searchParams: SearchParamsRecord = {},
+): Promise<UploadCenterData> {
+  const records = await getRecruitLookRecords();
+  const rows = applyModuleFilters(buildMediaRows(records), searchParams).slice(0, 10);
+
+  return {
+    athletes: records.athletes.map((athlete) =>
+      uploadOption(
+        athlete.id,
+        `${athlete.first_name} ${athlete.last_name}`,
+        `${athlete.position} - ${athlete.graduation_year}`,
+      ),
+    ),
+    cards: moduleCards(records, "upload"),
+    creators: records.creators.map((creator) =>
+      uploadOption(
+        creator.id,
+        creator.display_name,
+        `${titleCase(creator.role)} - ${creator.home_market}`,
+      ),
+    ),
+    events: records.events.map((event) =>
+      uploadOption(
+        event.id,
+        event.name,
+        `${formatShortDate(event.starts_at)} - ${titleCase(event.status)}`,
+      ),
+    ),
+    recentUploads: rows,
+    schools: records.schools.map((school) =>
+      uploadOption(school.id, school.name, `${school.city}, ${school.state}`),
+    ),
+    stats: moduleStats(records, "upload"),
+  };
+}
+
+export async function getMediaLibraryPageData(
+  searchParams: SearchParamsRecord = {},
+): Promise<MediaLibraryPageData> {
+  const records = await getRecruitLookRecords();
+  const rows = applyModuleFilters(buildMediaRows(records), searchParams);
+
+  return {
+    cards: moduleCards(records, "media-library"),
+    items: buildMediaLibraryItems(records, rows),
+    stats: moduleStats(records, "media-library"),
+  };
+}
+
 export async function getRecruitLookDashboardData() {
   const records = await getRecruitLookRecords();
   const eventRows = buildEventRows(records);
@@ -806,7 +900,7 @@ export async function getRecruitLookDashboardData() {
       detail: storage
         ? `${records.mediaFiles.length} media records, ${Math.round((storage.used_bytes / storage.total_bytes) * 100)}% of tenant allocation`
         : `${records.mediaFiles.length} media records tracked`,
-      value: storage ? tbToDisplay(storage.used_bytes) : bytesToDisplay(records.mediaFiles.reduce((sum, file) => sum + file.size_bytes, 0)),
+      value: storage ? tbToDisplay(storage.used_bytes) : bytesToDisplay(records.mediaFiles.reduce((sum, file) => sum + (file.file_size_bytes ?? file.size_bytes), 0)),
     },
     creatorActivityCard: {
       detail: "Confirmed and active creators across capture and edit queues",

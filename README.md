@@ -29,8 +29,9 @@ The app now includes the RecruitLook production portal foundation:
 - Supabase-ready schema, RLS, and RecruitLook seed data under `supabase/`
 - Typed Supabase browser, server, and admin client factories under `lib/supabase/`
 - Live server-side Supabase reads for RecruitLook dashboard and operating modules
+- Cloudflare R2 presigned upload/download foundation for protected media files
 
-Cloudflare R2, Stripe, Resend, and OpenAI are intentionally not integrated yet.
+Stripe, Resend, and OpenAI are intentionally not integrated yet.
 
 ## Clerk Setup
 
@@ -76,6 +77,42 @@ Apply the database files in this order:
 See `supabase/README.md` for the tenant model, RLS approach, and seed contents.
 The protected UI reads live Supabase records through server-only data access
 functions scoped to the RecruitLook organization.
+
+## Cloudflare R2 Setup
+
+The Upload Center uses server-generated presigned URLs so the browser uploads
+files directly to Cloudflare R2. R2 credentials stay server-only.
+
+Add these values to `.env.local`:
+
+```bash
+CLOUDFLARE_ACCOUNT_ID=
+CLOUDFLARE_R2_ACCESS_KEY_ID=
+CLOUDFLARE_R2_SECRET_ACCESS_KEY=
+CLOUDFLARE_R2_BUCKET_NAME=
+CLOUDFLARE_R2_PUBLIC_BASE_URL=
+```
+
+Manual Cloudflare setup:
+
+1. Create a private R2 bucket for RecruitLook media.
+2. Create an R2 API token with object read/write access for that bucket.
+3. Add the account id, access key id, secret access key, and bucket name to `.env.local`.
+4. Configure bucket CORS to allow local and production app origins to `PUT` and `GET` with `Content-Type`.
+5. Optional: set `CLOUDFLARE_R2_PUBLIC_BASE_URL` only if a public/custom domain is intentionally configured.
+
+Apply `supabase/migrations/001_media_files_r2_fields.sql` before relying on
+production uploads. The app can still create a legacy media record if the
+migration has not been applied, but the R2 metadata columns are the production
+path.
+
+Upload flow:
+
+1. A signed-in user selects media and routing metadata in `/app/upload`.
+2. `/api/media/presign-upload` validates the RecruitLook event and returns a short-lived R2 PUT URL.
+3. The browser uploads directly to R2.
+4. `/api/media/complete-upload` creates the `media_files` record in Supabase.
+5. `/app/media-library` requests a short-lived download URL through `/api/media/presign-download`.
 
 ## Protected Routes
 
