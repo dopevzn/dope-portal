@@ -16,12 +16,8 @@ import { ModuleCard } from "@/components/app/module-card";
 import { PageShell } from "@/components/app/page-shell";
 import { StatCard } from "@/components/app/stat-card";
 import { StatusBadge } from "@/components/app/status-badge";
-import {
-  getDashboardMetrics,
-  getDashboardTables,
-  getModuleDefinition,
-  storageUsage,
-} from "@/lib/recruitlook-seed";
+import { getModuleChrome } from "@/lib/app-modules";
+import { getRecruitLookDashboardData } from "@/lib/recruitlook-live-data";
 
 const metricIcons = {
   "Today's Events": CalendarDays,
@@ -36,24 +32,19 @@ const metricIcons = {
   "Recent Requests": Bell,
 } as const;
 
-const eventColumns = getModuleDefinition("events").columns.slice(0, 6);
-const assignmentColumns = getModuleDefinition("assignments").columns.filter((column) =>
+const eventColumns = getModuleChrome("events").columns.slice(0, 6);
+const assignmentColumns = getModuleChrome("assignments").columns.filter((column) =>
   ["title", "event", "creator", "status", "priority"].includes(column.key),
 );
-const uploadColumns = getModuleDefinition("upload").columns.filter((column) =>
+const uploadColumns = getModuleChrome("upload").columns.filter((column) =>
   ["fileName", "creator", "status", "size"].includes(column.key),
 );
-const deliverableColumns = getModuleDefinition("deliverables").columns.filter((column) =>
+const deliverableColumns = getModuleChrome("deliverables").columns.filter((column) =>
   ["title", "dueAt", "status", "priority", "assetCount"].includes(column.key),
 );
-const requestColumns = getModuleDefinition("requests").columns.filter((column) =>
+const requestColumns = getModuleChrome("requests").columns.filter((column) =>
   ["title", "requester", "dueAt", "status", "priority"].includes(column.key),
 );
-const notificationColumns = [
-  { key: "title", header: "Notification" },
-  { key: "type", header: "Type", type: "badge" as const },
-  { key: "severity", header: "Severity", type: "status" as const },
-];
 
 type DashboardWidgetProps = {
   title: string;
@@ -75,9 +66,9 @@ function DashboardWidget({ title, description, children }: DashboardWidgetProps)
   );
 }
 
-export function DashboardPreview() {
-  const metrics = getDashboardMetrics();
-  const dashboardTables = getDashboardTables();
+export async function DashboardPreview() {
+  const dashboard = await getRecruitLookDashboardData();
+  const { metrics, tables: dashboardTables } = dashboard;
 
   return (
     <PageShell
@@ -135,16 +126,14 @@ export function DashboardPreview() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
           <ModuleCard
             label="Storage Used"
-            value={`${storageUsage.usedTb.toFixed(2)} TB`}
-            detail={`${storageUsage.mediaCount} media records, ${Math.round(
-              (storageUsage.usedTb / storageUsage.totalTb) * 100,
-            )}% of tenant allocation`}
+            value={dashboard.storageCard.value}
+            detail={dashboard.storageCard.detail}
             tone="neutral"
           />
           <ModuleCard
             label="Creator Activity"
-            value="7 active"
-            detail="Confirmed and active creators across capture and edit queues"
+            value={dashboard.creatorActivityCard.value}
+            detail={dashboard.creatorActivityCard.detail}
             tone="success"
           />
         </div>
@@ -227,7 +216,7 @@ export function DashboardPreview() {
         </div>
         <div className="sr-only">
           <DataTable
-            columns={notificationColumns}
+            columns={dashboardTables.notificationColumns}
             rows={dashboardTables.notifications}
             surface="embedded"
           />

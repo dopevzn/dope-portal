@@ -3,12 +3,8 @@ import { EmptyState } from "@/components/app/empty-state";
 import { FilterBar } from "@/components/app/filter-bar";
 import { ModuleCard } from "@/components/app/module-card";
 import { PageShell } from "@/components/app/page-shell";
-import {
-  getModuleDefinition,
-  getModuleRows,
-  type ModuleId,
-  type SearchParamsRecord,
-} from "@/lib/recruitlook-seed";
+import type { ModuleId, SearchParamsRecord } from "@/lib/app-modules";
+import { getOperationsModuleData } from "@/lib/recruitlook-live-data";
 
 type OperationsModulePageProps = {
   moduleId: ModuleId;
@@ -16,38 +12,37 @@ type OperationsModulePageProps = {
   searchParams?: SearchParamsRecord;
 };
 
-export function OperationsModulePage({
+export async function OperationsModulePage({
   moduleId,
   pathname,
   searchParams = {},
 }: OperationsModulePageProps) {
-  const moduleDefinition = getModuleDefinition(moduleId);
-  const rows = getModuleRows(moduleId, searchParams);
+  const moduleData = await getOperationsModuleData(moduleId, searchParams);
 
   return (
     <PageShell
-      eyebrow={moduleDefinition.eyebrow}
-      title={moduleDefinition.title}
-      description={moduleDefinition.description}
-      stats={moduleDefinition.stats}
+      eyebrow={moduleData.eyebrow}
+      title={moduleData.title}
+      description={moduleData.description}
+      stats={moduleData.stats}
     >
       <FilterBar
-        filters={moduleDefinition.filters}
+        filters={moduleData.filters}
         pathname={pathname}
         searchParams={searchParams}
       />
 
-      {rows.length ? (
-        <DataTable columns={moduleDefinition.columns} rows={rows} />
+      {moduleData.rows.length ? (
+        <DataTable columns={moduleData.columns} rows={moduleData.rows} />
       ) : (
         <EmptyState
-          title={moduleDefinition.emptyState.title}
-          description={moduleDefinition.emptyState.description}
+          title={moduleData.emptyState.title}
+          description={moduleData.emptyState.description}
         />
       )}
 
       <section className="grid gap-4 md:grid-cols-2">
-        {moduleDefinition.cards.map((card) => (
+        {moduleData.cards.map((card) => (
           <ModuleCard key={card.label} {...card} />
         ))}
       </section>

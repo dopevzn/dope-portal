@@ -2,8 +2,8 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { FilterDefinition, SearchParamsRecord } from "@/lib/recruitlook-seed";
-import { getFirstParam } from "@/lib/recruitlook-seed";
+import type { FilterDefinition, SearchParamsRecord } from "@/lib/app-modules";
+import { getFirstParam } from "@/lib/app-modules";
 import { cn } from "@/lib/utils";
 
 type FilterBarProps = {

@@ -62,9 +62,9 @@ RLS is enabled and forced on every table. Policies are scoped to the authenticat
 - `is_org_admin(organization_id)`
 - `can_read_user_profile(clerk_user_id)`
 
-There are no anonymous public table policies. Tenant rows are readable and writable only by active organization members. Deletes and membership edits are restricted to owner, media director, and admin roles.
+There are no anonymous public table policies. Tenant rows are readable and writable only by active organization members when requests are made with authenticated Supabase JWTs. Deletes and membership edits are restricted to owner, media director, and admin roles.
 
-The RLS helper expects Supabase requests to receive a JWT where the `sub` claim is the Clerk user id. The current UI still reads local RecruitLook data; live reads should be connected after Clerk/Supabase JWT integration is configured.
+The RLS helper expects Supabase requests to receive a JWT where the `sub` claim is the Clerk user id. The current app uses server-only Supabase service-role reads plus explicit RecruitLook `organization_id` filters while Clerk/Supabase JWT handoff is not yet configured. Do not expose the service-role key to Client Components.
 
 ## Seed Contents
 

@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import type { ModuleCardData } from "@/lib/recruitlook-seed";
+import type { ModuleCardData } from "@/lib/app-modules";
 import { cn } from "@/lib/utils";
 
 type ModuleCardProps = ModuleCardData;

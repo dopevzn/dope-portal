@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { getStatusTone, type StatusTone } from "@/lib/recruitlook-seed";
+import { getStatusTone, type StatusTone } from "@/lib/app-modules";
 
 type StatusBadgeProps = {
   status: string;

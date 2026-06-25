@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { SectionHeader } from "@/components/app/section-header";
 import { StatCard } from "@/components/app/stat-card";
-import type { StatSnapshot } from "@/lib/recruitlook-seed";
+import type { StatSnapshot } from "@/lib/app-modules";
 
 type PageShellProps = {
   eyebrow?: string;

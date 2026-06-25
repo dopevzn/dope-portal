@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import type { ModuleColumn, ModuleRow } from "@/lib/recruitlook-seed";
+import type { ModuleColumn, ModuleRow } from "@/lib/app-modules";
 import { cn } from "@/lib/utils";
 
 import { StatusBadge } from "./status-badge";

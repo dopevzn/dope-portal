@@ -28,6 +28,7 @@ The app now includes the RecruitLook production portal foundation:
   states, module cards, section headers, and page shells
 - Supabase-ready schema, RLS, and RecruitLook seed data under `supabase/`
 - Typed Supabase browser, server, and admin client factories under `lib/supabase/`
+- Live server-side Supabase reads for RecruitLook dashboard and operating modules
 
 Cloudflare R2, Stripe, Resend, and OpenAI are intentionally not integrated yet.
 
@@ -73,9 +74,8 @@ Apply the database files in this order:
 3. `supabase/seed.sql`
 
 See `supabase/README.md` for the tenant model, RLS approach, and seed contents.
-The protected UI currently reads from centralized RecruitLook data utilities so
-the pages are usable before importing live records. The next data step is to
-replace those utility reads with tenant-scoped Supabase queries.
+The protected UI reads live Supabase records through server-only data access
+functions scoped to the RecruitLook organization.
 
 ## Protected Routes
 
@@ -113,7 +113,7 @@ npm run build
 - `components/landing/` - public landing page sections
 - `components/app/` - protected app shell, shared app UI, dashboard, and module renderer
 - `lib/supabase/` - typed Supabase client factories
-- `lib/` - reusable utilities and centralized RecruitLook operating data
+- `lib/` - reusable utilities, static app metadata, and live RecruitLook data access
 - `supabase/` - schema, RLS policies, seed data, and database setup docs
 - `types/database.ts` - Supabase database types used by client factories
 
