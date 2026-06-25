@@ -226,6 +226,15 @@ export async function POST(request: Request) {
 
     const confirmedFileSizeBytes = r2Object.contentLength ?? fileSizeBytes;
     const confirmedMimeType = r2Object.contentType ?? mimeType;
+    console.info("[r2:complete-upload]", {
+      bucketName,
+      confirmedContentType: confirmedMimeType,
+      confirmedFileSizeBytes,
+      objectVerified: true,
+      requestedContentType: mimeType,
+      requestedFileSizeBytes: fileSizeBytes,
+      storageProvider: "r2",
+    });
     const publicUrl = visibility === "public" ? getR2PublicUrl(objectKey) : null;
     const metadata: Json = {
       asset_type: assetType,

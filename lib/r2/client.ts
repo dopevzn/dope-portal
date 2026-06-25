@@ -13,6 +13,20 @@ type R2Config = {
 let r2Client: S3Client | null = null;
 let r2Config: R2Config | null = null;
 
+export function getR2EndpointDomain(accountId = process.env.CLOUDFLARE_ACCOUNT_ID) {
+  return accountId ? `${accountId}.r2.cloudflarestorage.com` : null;
+}
+
+export function getR2EnvironmentStatus() {
+  return {
+    accountId: Boolean(process.env.CLOUDFLARE_ACCOUNT_ID),
+    accessKeyId: Boolean(process.env.CLOUDFLARE_R2_ACCESS_KEY_ID),
+    bucketName: Boolean(process.env.CLOUDFLARE_R2_BUCKET_NAME),
+    publicBaseUrl: Boolean(process.env.CLOUDFLARE_R2_PUBLIC_BASE_URL),
+    secretAccessKey: Boolean(process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY),
+  };
+}
+
 function requiredEnv(name: string) {
   const value = process.env[name];
 
@@ -46,7 +60,7 @@ export function getR2Client() {
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,
       },
-      endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
+      endpoint: `https://${getR2EndpointDomain(config.accountId)}`,
       region: "auto",
     });
   }

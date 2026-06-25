@@ -30,6 +30,12 @@ type UploadCenterProps = {
 };
 
 type PresignUploadResponse = {
+  debug?: {
+    contentType: string;
+    endpointDomain: string | null;
+    method: "PUT";
+    uploadUrlHostname: string;
+  };
   headers: Record<string, string>;
   objectKey: string;
   uploadUrl: string;
@@ -43,11 +49,56 @@ type CompleteUploadResponse = {
 };
 
 type UploadPhase = "idle" | "presigning" | "uploading" | "recording" | "complete";
+type UploadStage = "presign" | "r2-put" | "complete";
+type UploadFailureOptions = {
+  details?: string[];
+  httpStatus?: number;
+  message: string;
+  responseText?: string;
+  stage: UploadStage;
+};
+type UploadFailure = Error & {
+  details: string[];
+  httpStatus?: number;
+  responseText?: string;
+  stage: UploadStage;
+};
 
 const fieldClass =
   "h-11 w-full rounded-[8px] border border-border bg-background px-3 text-sm font-semibold text-foreground outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
 
-async function jsonPost<TResponse>(url: string, body: Record<string, unknown>) {
+function createUploadFailure({
+  details = [],
+  httpStatus,
+  message,
+  responseText,
+  stage,
+}: UploadFailureOptions): UploadFailure {
+  const error = new Error(message) as UploadFailure;
+
+  error.details = details;
+  error.httpStatus = httpStatus;
+  error.responseText = responseText;
+  error.stage = stage;
+
+  return error;
+}
+
+function stageLabel(stage: UploadStage) {
+  const labels: Record<UploadStage, string> = {
+    complete: "Supabase record step",
+    presign: "Presign step",
+    "r2-put": "R2 PUT step",
+  };
+
+  return labels[stage];
+}
+
+async function jsonPost<TResponse>(
+  url: string,
+  body: Record<string, unknown>,
+  stage: Extract<UploadStage, "complete" | "presign">,
+) {
   const response = await fetch(url, {
     body: JSON.stringify(body),
     headers: {
@@ -55,10 +106,28 @@ async function jsonPost<TResponse>(url: string, body: Record<string, unknown>) {
     },
     method: "POST",
   });
-  const data = (await response.json()) as TResponse & { error?: string };
+  const responseText = await response.text();
+  let data: TResponse & { error?: string };
+
+  try {
+    data = responseText
+      ? (JSON.parse(responseText) as TResponse & { error?: string })
+      : ({} as TResponse & { error?: string });
+  } catch {
+    data = {} as TResponse & { error?: string };
+  }
 
   if (!response.ok) {
-    throw new Error(data.error ?? "Request failed.");
+    throw createUploadFailure({
+      details: [
+        `${stageLabel(stage)} returned HTTP ${response.status}.`,
+        responseText ? "The server returned a readable error body." : "No response body was returned.",
+      ],
+      httpStatus: response.status,
+      message: data.error ?? `${stageLabel(stage)} failed.`,
+      responseText: data.error ?? responseText,
+      stage,
+    });
   }
 
   return data;
@@ -71,11 +140,32 @@ function uploadFileToR2(
 ) {
   return new Promise<void>((resolve, reject) => {
     const request = new XMLHttpRequest();
+    const signedContentType =
+      presigned.headers["Content-Type"] ?? presigned.headers["content-type"];
+    const browserContentType = file.type || "application/octet-stream";
+    const uploadHost = presigned.debug?.uploadUrlHostname ?? new URL(presigned.uploadUrl).hostname;
+
+    if (signedContentType && signedContentType !== browserContentType) {
+      reject(
+        createUploadFailure({
+          details: [
+            `R2 host: ${uploadHost}`,
+            `Signed Content-Type: ${signedContentType}`,
+            `Browser file Content-Type: ${browserContentType}`,
+          ],
+          message:
+            "Signed Content-Type does not match the file Content-Type, so the R2 PUT was not attempted.",
+          stage: "r2-put",
+        }),
+      );
+      return;
+    }
 
     request.open("PUT", presigned.uploadUrl);
     Object.entries(presigned.headers).forEach(([key, value]) => {
       request.setRequestHeader(key, value);
     });
+    request.timeout = 60 * 60 * 1000;
     request.upload.onprogress = (event) => {
       if (event.lengthComputable) {
         onProgress(Math.round((event.loaded / event.total) * 100));
@@ -87,11 +177,60 @@ function uploadFileToR2(
         return;
       }
 
-      reject(new Error(`R2 upload failed with status ${request.status}.`));
+      reject(
+        createUploadFailure({
+          details: [
+            `R2 host: ${uploadHost}`,
+            `Signed Content-Type: ${signedContentType ?? "not provided"}`,
+            `Browser file Content-Type: ${browserContentType}`,
+            request.responseText
+              ? "R2 returned a readable response body."
+              : "R2 did not return a readable response body.",
+          ],
+          httpStatus: request.status,
+          message: `PUT to R2 failed with HTTP ${request.status}.`,
+          responseText: request.responseText,
+          stage: "r2-put",
+        }),
+      );
     };
-    request.onerror = () => reject(new Error("Network error while uploading to R2."));
+    request.onerror = () =>
+      reject(
+        createUploadFailure({
+          details: [
+            `R2 host: ${uploadHost}`,
+            `Signed Content-Type: ${signedContentType ?? "not provided"}`,
+            `Browser file Content-Type: ${browserContentType}`,
+            "The browser did not expose an HTTP status code.",
+            "Most common cause: R2 bucket CORS blocked the PUT preflight or PUT response.",
+          ],
+          message:
+            "PUT to R2 failed before a readable HTTP response. This is usually CORS/preflight or a network/TLS failure.",
+          stage: "r2-put",
+        }),
+      );
+    request.onabort = () =>
+      reject(
+        createUploadFailure({
+          details: [`R2 host: ${uploadHost}`],
+          message: "PUT to R2 was aborted before completion.",
+          stage: "r2-put",
+        }),
+      );
+    request.ontimeout = () =>
+      reject(
+        createUploadFailure({
+          details: [`R2 host: ${uploadHost}`],
+          message: "PUT to R2 timed out before completion.",
+          stage: "r2-put",
+        }),
+      );
     request.send(file);
   });
+}
+
+function isUploadFailure(error: unknown): error is UploadFailure {
+  return error instanceof Error && "stage" in error && "details" in error;
 }
 
 function optionLabel(options: UploadOption[], id: string) {
@@ -118,11 +257,13 @@ export function UploadCenter({
   const [status, setStatus] = useState<MediaProcessingStatus>("ready");
   const [visibility, setVisibility] = useState<MediaVisibility>("internal");
   const [error, setError] = useState("");
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [success, setSuccess] = useState("");
   const isUploading = phase !== "idle" && phase !== "complete";
 
   function selectFile(nextFile: File | null) {
     setError("");
+    setErrorDetails([]);
     setSuccess("");
     setFile(nextFile);
 
@@ -150,6 +291,7 @@ export function UploadCenter({
 
     try {
       setError("");
+      setErrorDetails([]);
       setSuccess("");
       setPhase("presigning");
       setProgress(8);
@@ -169,6 +311,7 @@ export function UploadCenter({
       const presigned = await jsonPost<PresignUploadResponse>(
         "/api/media/presign-upload",
         basePayload,
+        "presign",
       );
 
       setPhase("uploading");
@@ -185,6 +328,7 @@ export function UploadCenter({
           ...basePayload,
           objectKey: presigned.objectKey,
         },
+        "complete",
       );
 
       setPhase("complete");
@@ -194,11 +338,24 @@ export function UploadCenter({
     } catch (uploadError) {
       setPhase("idle");
       setProgress(0);
+      if (isUploadFailure(uploadError)) {
+        setError(`${stageLabel(uploadError.stage)} failed: ${uploadError.message}`);
+        setErrorDetails([
+          ...uploadError.details,
+          uploadError.httpStatus ? `HTTP status: ${uploadError.httpStatus}` : "HTTP status: unavailable",
+          uploadError.responseText
+            ? `Response: ${uploadError.responseText.slice(0, 400)}`
+            : "Response text: unavailable",
+        ]);
+        return;
+      }
+
       setError(
         uploadError instanceof Error
           ? uploadError.message
           : "Upload failed before the media record was saved.",
       );
+      setErrorDetails([]);
     }
   }
 
@@ -270,7 +427,16 @@ export function UploadCenter({
         {error ? (
           <div className="mt-5 flex items-start gap-3 rounded-[8px] border border-destructive/35 bg-destructive/10 p-4 text-sm text-destructive">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-            <p>{error}</p>
+            <div>
+              <p className="font-semibold">{error}</p>
+              {errorDetails.length ? (
+                <ul className="mt-2 grid gap-1 text-xs leading-5 text-destructive/90">
+                  {errorDetails.map((detail) => (
+                    <li key={detail}>{detail}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
           </div>
         ) : null}
 

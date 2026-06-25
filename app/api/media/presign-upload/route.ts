@@ -8,6 +8,10 @@ import {
   isMediaProcessingStatus,
   isMediaVisibility,
 } from "@/lib/media-upload-options";
+import {
+  getR2EndpointDomain,
+  getR2EnvironmentStatus,
+} from "@/lib/r2/client";
 import { getRecruitLookPortalContext } from "@/lib/recruitlook-live-data";
 
 export const runtime = "nodejs";
@@ -115,9 +119,25 @@ export async function POST(request: Request) {
       contentType: mimeType,
       key: objectKey,
     });
+    console.info("[r2:presign-upload]", {
+      bucketName: presignedUpload.bucket,
+      contentType: mimeType,
+      endpointDomain: getR2EndpointDomain(),
+      env: getR2EnvironmentStatus(),
+      fileSizeBytes,
+      method: presignedUpload.method,
+      presignedUrlHostname: presignedUpload.uploadUrlHostname,
+      signedRequestHeaders: Object.keys(presignedUpload.headers),
+    });
 
     return NextResponse.json({
       bucket: presignedUpload.bucket,
+      debug: {
+        contentType: mimeType,
+        endpointDomain: getR2EndpointDomain(),
+        method: presignedUpload.method,
+        uploadUrlHostname: presignedUpload.uploadUrlHostname,
+      },
       expiresIn: presignedUpload.expiresIn,
       headers: presignedUpload.headers,
       method: presignedUpload.method,

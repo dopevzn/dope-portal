@@ -26,6 +26,7 @@ export async function createPresignedUpload({
   const url = await getSignedUrl(getR2Client(), command, {
     expiresIn: uploadUrlExpiresIn,
   });
+  const uploadUrl = new URL(url);
 
   return {
     bucket: bucketName,
@@ -34,6 +35,7 @@ export async function createPresignedUpload({
       "Content-Type": contentType,
     },
     method: "PUT" as const,
+    uploadUrlHostname: uploadUrl.hostname,
     url,
   };
 }
