@@ -16,8 +16,8 @@ const documents = [
   },
   {
     title: "Pitch Deck",
-    description: "The concise presentation of the opportunity, growth plan, and capital deployment strategy.",
-    href: "https://docs.google.com/presentation/d/1yCI5McA1dwDHmzUgB6NDODQby4zLmls3stEGJhhFOI8/edit",
+    description: "The complete 12-slide investor presentation covering the opportunity, traction, growth strategy, financial outlook, and capital deployment.",
+    href: "https://docs.google.com/presentation/d/1muoa-qxBQt35pVclDit8DSupDSqms2QJQ7ISgBuHrpM/edit",
     icon: Presentation,
   },
 ] as const;
@@ -65,7 +65,7 @@ export function LandingPage() {
       <section className="border-y border-white/10 bg-white/[0.02]">
         <div className="mx-auto grid max-w-7xl grid-cols-2 px-6 py-8 lg:grid-cols-4 lg:px-10">
           {[
-            ["$55K", "Historical revenue", "Dec. 2024–Dec. 2025"],
+            ["$55K", "Historical revenue", "Dec. 2024-Dec. 2025"],
             ["$10K", "Capital discussion", "Targeted growth capital"],
             ["60%", "Year 1 margin target", "Base-case assumption"],
             ["$225K", "Year 5 revenue", "Base-case forecast"],
@@ -112,7 +112,7 @@ export function LandingPage() {
       <footer className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-8 text-xs text-white/30 sm:flex-row sm:items-center sm:justify-between lg:px-10">
           <p>DOPE VZN Capital Room</p>
-          <p>Confidential · Private discussion only</p>
+          <p>Confidential - Private discussion only</p>
         </div>
       </footer>
     </main>
