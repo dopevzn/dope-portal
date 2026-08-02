@@ -16,9 +16,13 @@ const geistMono = Geist_Mono({
 const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 export const metadata: Metadata = {
-  title: "DOPE Portal | Sports Media Operating System",
+  title: "DOPE VZN Capital Room",
   description:
-    "A premium multi-tenant media operating system for sports organizations, starting with RecruitLook Hoops.",
+    "Private capital materials for prospective DOPE VZN investment partners and strategic supporters.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function RootLayout({
