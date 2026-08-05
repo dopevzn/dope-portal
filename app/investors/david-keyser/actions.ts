@@ -7,10 +7,11 @@ import { redirect } from "next/navigation";
 const COOKIE_NAME = "dope_vzn_david_access";
 
 function getExpectedToken() {
-  const secret = process.env.DAVID_INVESTOR_SESSION_SECRET;
+  const password = process.env.DAVID_INVESTOR_PASSWORD;
+  const secret = process.env.DAVID_INVESTOR_SESSION_SECRET || password;
 
-  if (!secret) {
-    throw new Error("Investor portal environment variables are not configured.");
+  if (!password || !secret) {
+    throw new Error("Investor portal password is not configured.");
   }
 
   return createHmac("sha256", secret)
@@ -33,7 +34,7 @@ export async function unlockDavidRoom(formData: FormData) {
   const submittedPassword = String(formData.get("password") ?? "").slice(0, 128);
   const expectedPassword = process.env.DAVID_INVESTOR_PASSWORD;
 
-  if (!expectedPassword || !process.env.DAVID_INVESTOR_SESSION_SECRET) {
+  if (!expectedPassword) {
     redirect("/investors/david-keyser?error=configuration");
   }
 
