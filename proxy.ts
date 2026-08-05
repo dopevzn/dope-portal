@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 const isPublicRoute = createRouteMatcher([
   "/",
+  "/investors(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
 ]);
@@ -13,7 +14,7 @@ const hasClerkKeys = Boolean(
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY,
 );
 
-const protectedMiddleware = clerkMiddleware(async (auth, req) => {
+const configuredProxy = clerkMiddleware(async (auth, req) => {
   if (isPublicRoute(req)) {
     return;
   }
@@ -23,11 +24,11 @@ const protectedMiddleware = clerkMiddleware(async (auth, req) => {
   }
 });
 
-function unconfiguredMiddleware() {
+function unconfiguredProxy() {
   return NextResponse.next();
 }
 
-export default hasClerkKeys ? protectedMiddleware : unconfiguredMiddleware;
+export default hasClerkKeys ? configuredProxy : unconfiguredProxy;
 
 export const config = {
   matcher: [

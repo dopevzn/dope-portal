@@ -1,20 +1,21 @@
 "use server";
 
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 const COOKIE_NAME = "dope_vzn_david_access";
 
 function getExpectedToken() {
-  const password = process.env.DAVID_INVESTOR_PASSWORD;
   const secret = process.env.DAVID_INVESTOR_SESSION_SECRET;
 
-  if (!password || !secret) {
+  if (!secret) {
     throw new Error("Investor portal environment variables are not configured.");
   }
 
-  return createHash("sha256").update(`${password}:${secret}`).digest("hex");
+  return createHmac("sha256", secret)
+    .update("david-keyser-capital-room:v1")
+    .digest("hex");
 }
 
 function safeEqual(left: string, right: string) {
@@ -29,7 +30,7 @@ function safeEqual(left: string, right: string) {
 }
 
 export async function unlockDavidRoom(formData: FormData) {
-  const submittedPassword = String(formData.get("password") ?? "");
+  const submittedPassword = String(formData.get("password") ?? "").slice(0, 128);
   const expectedPassword = process.env.DAVID_INVESTOR_PASSWORD;
 
   if (!expectedPassword || !process.env.DAVID_INVESTOR_SESSION_SECRET) {
@@ -47,6 +48,7 @@ export async function unlockDavidRoom(formData: FormData) {
     sameSite: "strict",
     path: "/investors/david-keyser",
     maxAge: 60 * 60 * 8,
+    priority: "high",
   });
 
   redirect("/investors/david-keyser");
