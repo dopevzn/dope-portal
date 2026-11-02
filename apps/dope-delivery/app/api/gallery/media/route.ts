@@ -17,7 +17,7 @@ export async function GET(req:Request){
     const {data:asset,error:ae}=await client.from('media_assets').select('storage_key,playback_key,poster_key,original_filename,display_filename,processing_state').eq('organization_id',gallery.organization_id).eq('id',link.asset_id).maybeSingle();
     if(ae)throw ae;
     if(!asset)return err('Asset not found',404);
-    const key=mode==='download'?asset.storage_key:mode==='poster'?asset.poster_key:asset.playback_key||asset.storage_key;
+    const key=mode==='download'?asset.storage_key:mode==='poster'?asset.poster_key:asset.playback_key||asset.poster_key;
     if(!key)return err('Asset version is unavailable',404);
     const url=await signedMediaUrl(key,asset.original_filename||asset.display_filename||'deliverable',mode==='download');
     if(mode==='download')await client.from('delivery_portal_events').insert({gallery_id:gallery.id,item_id:id,kind:'download',details:{}});

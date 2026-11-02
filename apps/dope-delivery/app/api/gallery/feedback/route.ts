@@ -1,4 +1,4 @@
-import { configured, db, err, resolveGallery } from '@/lib/server';
+import { configured, db, err, rateLimit, resolveGallery } from '@/lib/server';
 export const runtime='nodejs';
 export async function POST(req:Request){
   if(!configured())return err('Delivery service is awaiting configuration.',503);
@@ -8,6 +8,7 @@ export async function POST(req:Request){
     const {gallery,status,error}=await resolveGallery(body.token);
     if(!gallery)return err(error||'Unavailable',status);
     if(!gallery.allow_feedback)return err('Feedback is disabled',403);
+    if(!(await rateLimit(req,body.token,'feedback')))return err('Too many responses. Try again later.',429);
     const name=typeof body.name==='string'?body.name.trim().slice(0,80):'';
     const message=typeof body.message==='string'?body.message.trim().slice(0,2000):'';
     const decision=body.decision==='approve'?'approve':body.decision==='revision'?'revision':null;

@@ -76,4 +76,20 @@ export async function requireAdmin(request: Request) {
   if (!permitted) return null;
   return {user,organizationId:permitted.organization_id as string};
 }
+export async function rateLimit(request: Request, token: string, action: 'pin' | 'feedback') {
+  const rawIp = request.headers.get('x-vercel-forwarded-for') || request.headers.get('x-forwarded-for') || 'unknown';
+  const address = rawIp.split(',')[0].trim().slice(0, 100);
+  const identity = tokenHash(`${action}:${tokenHash(token)}:${address}`);
+  const rules = action === 'pin'
+    ? [{id: `pin-user:${identity}`, max: 8, seconds: 900}, {id: `pin-gallery:${tokenHash(token)}`, max: 60, seconds: 3600}]
+    : [{id: `feedback-user:${identity}`, max: 12, seconds: 3600}, {id: `feedback-gallery:${tokenHash(token)}`, max: 100, seconds: 86400}];
+  for (const rule of rules) {
+    const { data, error } = await db().rpc('delivery_portal_rate_limit', {
+      p_identity: rule.id, p_max_attempts: rule.max, p_window_seconds: rule.seconds,
+    });
+    if (error) throw error;
+    if (data !== true) return false;
+  }
+  return true;
+}
 export function err(message: string,status = 400) { return Response.json({error:message},{status,headers:{'Cache-Control':'no-store'}}); }
